@@ -10,10 +10,32 @@ matrix:
     - perl: "5.10"
       dist: trusty
 env:
+  global:
   - "HARNESS_OPTIONS=j9"
+  - "BRANCH_NAME=master"
+  - "OWNER_NAME=jhthorsen"
+  - "JV_OWNER_NAME=mojolicious"
+  - "MPO_OWNER_NAME=jhthorsen"
 install:
-  - "cpanm -n https://github.com/jhthorsen/json-validator/archive/master.tar.gz"
-  - "cpanm -n https://github.com/jhthorsen/mojolicious-plugin-openapi/archive/master.tar.gz"
+  - |
+    if [[ "$TRAVIS_PULL_REQUEST" == true ]]; then
+        echo "This is a pull request"
+        export OWNER_NAME="${TRAVIS_PULL_REQUEST_SLUG%/*}"
+        export BRANCH_NAME="$TRAVIS_PULL_REQUEST_BRANCH"
+    elif [[ "$TRAVIS_BRANCH" != "$BRANCH_NAME" ]]; then
+        echo "This is a push to branch that is not $BRANCH_NAME"
+        export OWNER_NAME="${TRAVIS_REPO_SLUG%/*}"
+        export BRANCH_NAME="$TRAVIS_BRANCH"
+    fi
+    echo "Looking for repositories owned by $OWNER_NAME"
+    if ! `curl -Is https://github.com/${OWNER_NAME}/json-validator | head -n 1 | grep -q 404`; then
+      export JV_OWNER_NAME="$OWNER_NAME";
+    fi
+    if ! `curl -Is https://github.com/${OWNER_NAME}/mojolicious-plugin-openapi | head -n 1 | grep -q 404`; then
+      export MPO_OWNER_NAME="$OWNER_NAME";
+    fi
+  - "cpanm -n https://github.com/${JV_OWNER_NAME}/json-validator/archive/${BRANCH_NAME}.tar.gz"
+  - "cpanm -n https://github.com/${MPO_OWNER_NAME}/mojolicious-plugin-openapi/archive/${BRANCH_NAME}.tar.gz"
   - "cpanm -n Test::Pod Test::Pod::Coverage IO::Socket::SSL"
   - "cpanm -n --installdeps ."
 notifications:
